@@ -28,31 +28,6 @@ PAIRS = list(zip(IMG_FILES, LABEL_FILES))
 train, val = train_test_split(PAIRS, test_size=0.2, random_state=42)
 
 
-# If we didn't already format the raw data
-if (
-    not (FORMATTED_PATH / "train").exists()
-    or len(os.listdir(FORMATTED_PATH / "train")) == 0
-):
-    # Create destination directories if they don't exist.
-    train_dir = Path(FORMATTED_PATH / "train")
-    val_dir = Path(FORMATTED_PATH / "val")
-    train_dir.mkdir(parents=True, exist_ok=True)
-    val_dir.mkdir(parents=True, exist_ok=True)
-
-    # Copy training pairs.
-    for img_file, label_file in tqdm(train, desc="Copying train pairs"):
-        shutil.copy(IMG_PATH / img_file, train_dir / img_file)
-        shutil.copy(LABEL_PATH / label_file, train_dir / label_file)
-
-    # Copy validation pairs.
-    for img_file, label_file in tqdm(val, desc="Copying val pairs"):
-        shutil.copy(IMG_PATH / img_file, val_dir / img_file)
-        shutil.copy(LABEL_PATH / label_file, val_dir / label_file)
-
-    # Copy over classes too
-    shutil.copy(RAW_PATH / "classes.json", FORMATTED_PATH / "classes.json")
-
-
 print("File Samples:")
 print(f"Labels: {LABEL_FILES[0]}, {LABEL_FILES[-1]}")
 print(f"Images: {IMG_FILES[0]}, {IMG_FILES[-1]}")

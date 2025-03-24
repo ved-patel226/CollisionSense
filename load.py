@@ -1,23 +1,17 @@
 import cv2
 from ultralytics import YOLO
-import time
+import time  # Add this at the top of your file if not already imported
 
 # Load the YOLO model
 model = YOLO("runs/detect/train5/weights/best.pt")
 
 # Open the video file
-video_path = "sample.mp4"
+video_path = "test/sample5.mp4"
 cap = cv2.VideoCapture(video_path)
 
-# Constants for distance calculation
-# Average width of a car in meters (adjust this based on the cars in your video)
-KNOWN_WIDTH = 1.8  # meters
+KNOWN_WIDTH = 1.8
 
-# Focal length calculation - needs to be calibrated for accurate results
-# To calibrate: place a car at a known distance, detect it and measure its width in pixels
-# Then: focal_length = (width_in_pixels * known_distance) / KNOWN_WIDTH
-# Example: if car is 200 pixels wide at 10m: focal_length = (200 * 10) / 1.8 = 1111.11
-FOCAL_LENGTH = 1000  # placeholder - calibrate for your camera
+FOCAL_LENGTH = 1000
 
 
 def calculate_distance(bbox_width):
@@ -31,22 +25,25 @@ def calculate_distance(bbox_width):
 
 
 # Loop through the video frames
+
 while cap.isOpened():
-    time.sleep(1)
+    start_time = time.time()  # Start timer for FPS limiting
+
     # Read a frame from the video
     success, frame = cap.read()
 
     if success:
         # Run YOLO inference on the frame
-        results = model(frame)
-
-        # Visualize the results on the frame
+        results = model(frame, conf=0.85)
         annotated_frame = results[0].plot()
 
-        # Process each detection
+        # Process each detection filtering by confidence > 0.5
         boxes = results[0].boxes.xyxy.cpu().numpy()
+        confs = results[0].boxes.conf.cpu().numpy()
 
-        for box in boxes:
+        for box, conf in zip(boxes, confs):
+            # Visualize the results on the frame
+
             # Get box coordinates
             x1, y1, x2, y2 = box
             x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
@@ -58,10 +55,26 @@ while cap.isOpened():
             distance = calculate_distance(bbox_width)
 
             # Add distance text to the annotated frame
+            text = f"{distance:.2f}m"
+            (text_width, text_height), baseline = cv2.getTextSize(
+                text, cv2.FONT_HERSHEY_SIMPLEX, 1.5, 2
+            )
+            roi_x = x1
+            roi_y = y1 - 50
+
+            # Draw black rectangle as background for the text
+            cv2.rectangle(
+                annotated_frame,
+                (roi_x, roi_y - text_height - baseline),
+                (roi_x + text_width, roi_y + baseline),
+                (0, 0, 0),
+                cv2.FILLED,
+            )
+            # Overlay the text on the black rectangle
             cv2.putText(
                 annotated_frame,
-                f"{distance:.2f}m",
-                (x1 - 30, y1 - 30),
+                text,
+                (roi_x, roi_y),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1.5,
                 (0, 255, 0),
@@ -77,6 +90,11 @@ while cap.isOpened():
     else:
         # Break the loop if the end of the video is reached
         break
+
+    # Limit the loop to ~30 frames per second
+    elapsed = time.time() - start_time
+    delay = max(1 / 30 - elapsed, 0)
+    time.sleep(delay)
 
 # Release the video capture object and close the display window
 cap.release()

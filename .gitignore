@@ -2,3 +2,7 @@ raw_data
 formatted_data
 runs
 __pycache__
+test
+bdd100k_labels_release
+bdd100k
+convert/target

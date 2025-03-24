@@ -1,0 +1,7 @@
+path: /mnt/Fedora2/code/Car/formatted_data
+
+train: train/imgs
+val: val/imgs
+
+nc:
+  0: ""
