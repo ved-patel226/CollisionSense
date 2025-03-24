@@ -104,12 +104,12 @@ fn process_dataset(
 
     // Convert JSON labels to YOLO text files
     let num_to_class = [
-        ("car", 1),
-        ("person", 2),
-        ("bus", 3),
-        ("truck", 4),
-        ("bike", 5),
-        ("train", 6),
+        ("car", 0),
+        ("person", 1),
+        ("bus", 2),
+        ("truck", 3),
+        ("bike", 4),
+        ("train", 5),
     ]
         .iter()
         .cloned()
