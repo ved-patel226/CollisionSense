@@ -12,10 +12,10 @@ fn process_dataset(
     output_path: &Path
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Create output directories
-    fs::create_dir_all(output_path.join("imgs"))?;
+    fs::create_dir_all(output_path.join("images"))?;
     fs::create_dir_all(output_path.join("labels"))?;
 
-    let imgs_dir = output_path.join("imgs");
+    let imgs_dir = output_path.join("images");
     let labels_dir = output_path.join("labels");
 
     // Load JSON data
@@ -143,10 +143,14 @@ fn process_dataset(
                             let x2 = box2d["x2"].as_f64().unwrap();
                             let y2 = box2d["y2"].as_f64().unwrap();
 
-                            let width = x2 - x1;
-                            let height = y2 - y1;
-                            let middle_x = x1 + width / 2.0;
-                            let middle_y = y1 + height / 2.0;
+                            let image_width: f64 = 1280.0;
+                            let image_height: f64 = 720.0;
+
+                            let width = (x2 - x1) / image_width;
+                            let height = (y2 - y1) / image_height;
+                            let middle_x = (x2 + x1) / (2.0 * image_width);
+                            let middle_y = (y2 + y1) / (2.0 * image_height);
+
                             output_lines.push(
                                 format!(
                                     "{} {} {} {} {}",

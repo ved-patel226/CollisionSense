@@ -6,32 +6,30 @@ from tqdm.auto import tqdm
 import os
 
 from common import print_divider
-import shutil
 
-RAW_PATH = Path("./raw_data")
+
 FORMATTED_PATH = Path("./formatted_data")
 
-IMG_PATH = RAW_PATH / "data_object_image_2" / "training" / "image_2"
-IMG_FILES = os.listdir(IMG_PATH)
+os.makedirs(FORMATTED_PATH / "val" / "images", exist_ok=True)
+os.makedirs(FORMATTED_PATH / "train" / "images", exist_ok=True)
 
-LABEL_PATH = RAW_PATH / "labels"
-LABEL_FILES = os.listdir(LABEL_PATH)
+VAL_IMGS, TRAIN_IMGS = (
+    os.listdir(FORMATTED_PATH / "val" / "images"),
+    os.listdir(FORMATTED_PATH / "train" / "images"),
+)
 
-# Sort files because sometimes theres disturbances in files for some reason
-LABEL_FILES.sort()
-IMG_FILES.sort()
+VAL_LABELS, TRAIN_LABELS = (
+    os.listdir(FORMATTED_PATH / "val" / "labels"),
+    os.listdir(FORMATTED_PATH / "train" / "labels"),
+)
 
 # Create pairs of corresponding image and label filenames.
-PAIRS = list(zip(IMG_FILES, LABEL_FILES))
-
-# Split the paired data into train and validation sets (80% train, 20% val).
-train, val = train_test_split(PAIRS, test_size=0.2, random_state=42)
-
+train = list(zip(TRAIN_IMGS, TRAIN_LABELS))
+val = list(zip(VAL_IMGS, VAL_LABELS))
 
 print("File Samples:")
-print(f"Labels: {LABEL_FILES[0]}, {LABEL_FILES[-1]}")
-print(f"Images: {IMG_FILES[0]}, {IMG_FILES[-1]}")
-print(f"Paired: {PAIRS[0]}, {PAIRS[-1]}")
+print(f"Train: {train[0]}, {train[-1]}")
+print(f"Val: {val[0]}, {val[-1]}")
 print_divider()
 
 print("Train vs Val")
@@ -49,7 +47,7 @@ print_divider()
 model = YOLO("yolo11n.pt")
 
 train_res = model.train(
-    data=FORMATTED_PATH / "kitti.yaml",
+    data=FORMATTED_PATH / "dataset.yaml",
     epochs=100,
 )
 model.save("car.pt")
