@@ -47,7 +47,7 @@ def stream_to_virtual_cam(stop_event, bbox_queue):
                     break
 
                 # Run YOLO inference on the frame
-                results = model.track(frame, persist=True, conf=0.85, verbose=False)
+                results = model.track(frame, persist=True, conf=0.75, verbose=False)
 
                 # Process detections and add distance annotations
                 boxes = results[0].boxes.xyxy.cpu().numpy()

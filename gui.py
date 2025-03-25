@@ -5,6 +5,12 @@ import queue
 import numpy as np
 
 
+def normalize_with_range(max_possible, min_possible, target_min, target_max, num):
+    normalized = (num - min_possible) / (max_possible - min_possible)
+    scaled = normalized * (target_max - target_min) + target_min
+    return scaled
+
+
 def show_frame(cap, lbl, bbox_queue, bbox_info_label):
     ret, frame = cap.read()
     if ret:
@@ -18,12 +24,12 @@ def show_frame(cap, lbl, bbox_queue, bbox_info_label):
             # Draw bounding boxes on the frame
             for obj in bbox_data:
                 x1, y1, x2, y2 = obj["bbox"]
+                conf = obj["confidence"]
 
-                # Increase brightness within the bounding box region
+                # Adjust beta based on confidence (lower confidence results in a lower beta)
+                beta = normalize_with_range(0.75, 1.0, 0.0, 75.0, conf)
                 roi = cv2image[y1:y2, x1:x2]
-                bright_roi = cv2.convertScaleAbs(
-                    roi, alpha=1.0, beta=75
-                )  # increase brightness by adding 50
+                bright_roi = cv2.convertScaleAbs(roi, alpha=1.0, beta=beta)
 
                 # Create a mask with rounded edges
                 mask = np.zeros_like(roi, dtype=np.uint8)
