@@ -6,3 +6,5 @@ test
 bdd100k_labels_release
 bdd100k
 convert/target
+training/best.pt
+training/convert/target
