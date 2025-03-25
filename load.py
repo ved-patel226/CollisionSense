@@ -1,10 +1,11 @@
+import queue
 import cv2
 import pyvirtualcam
 from ultralytics import YOLO
 
 
 # NOTE -  Function MEANT to be threaded...
-def stream_to_virtual_cam(stop_event):
+def stream_to_virtual_cam(stop_event, bbox_queue):
     while not stop_event.is_set():
 
         # Load the YOLO model
@@ -34,54 +35,54 @@ def stream_to_virtual_cam(stop_event):
         )  # default to 30 if fps cannot be determined
 
         # Initialize the virtual camera
-        with pyvirtualcam.Camera(
-            width=width, height=height, fps=fps, print_fps=True
-        ) as cam:
+        with pyvirtualcam.Camera(width=width, height=height, fps=fps) as cam:
             # Rewind the capture to the first frame
             cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
             while cap.isOpened():
                 success, frame = cap.read()
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
                 if not success:
                     break
 
                 # Run YOLO inference on the frame
                 results = model.track(frame, persist=True, conf=0.85, verbose=False)
-                annotated_frame = results[0].plot()
-                annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
 
                 # Process detections and add distance annotations
                 boxes = results[0].boxes.xyxy.cpu().numpy()
                 confs = results[0].boxes.conf.cpu().numpy()
+                ids = results[0].boxes.id.int().cpu().tolist()
 
-                for box, conf in zip(boxes, confs):
+                # Create a list to store bbox info
+                bbox_data = []
+
+                for box, conf, id in zip(boxes, confs, ids):
                     x1, y1, x2, y2 = map(int, box)
-                    bbox_width = x2 - x1
-                    distance = calculate_distance(bbox_width)
-                    text = f"{distance:.2f}m"
-                    (text_width, text_height), baseline = cv2.getTextSize(
-                        text, cv2.FONT_HERSHEY_SIMPLEX, 1.5, 2
+                    distance = calculate_distance(x2 - x1)
+
+                    bbox_data.append(
+                        {
+                            "id": id,
+                            "bbox": (x1, y1, x2, y2),
+                            "distance": distance,
+                            "confidence": float(conf),
+                        }
                     )
-                    roi_x, roi_y = x1, y1 - 50
-                    cv2.rectangle(
-                        annotated_frame,
-                        (roi_x, roi_y - text_height - baseline),
-                        (roi_x + text_width, roi_y + baseline),
-                        (0, 0, 0),
-                        cv2.FILLED,
-                    )
-                    cv2.putText(
-                        annotated_frame,
-                        text,
-                        (roi_x, roi_y),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        1.5,
-                        (0, 255, 0),
-                        2,
-                    )
+
+                # Send bbox data to queue (non-blocking)
+                try:
+                    bbox_queue.put(bbox_data, block=False)
+                except queue.Full:
+                    # If queue is full, get rid of the oldest item
+                    try:
+                        bbox_queue.get_nowait()
+                        bbox_queue.put(bbox_data, block=False)
+                    except:
+                        pass
 
                 # Send the annotated frame to the virtual camera
-                cam.send(annotated_frame)
+                cam.send(frame)
                 cam.sleep_until_next_frame()
 
                 if cv2.waitKey(1) & 0xFF == ord("q"):
