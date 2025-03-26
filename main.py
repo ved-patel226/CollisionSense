@@ -1,8 +1,13 @@
-from load import stream_to_virtual_cam
-from gui import show_gui
+import os
+
+os.environ["COLLISION_SENSE_DEBUG"] = "true"
+
+from CollisionSense.main import stream_to_virtual_cam, show_gui
 import time
 import threading
 import queue
+
+# FIXME - Sometimes, doesn't work unless you do modprobe v4l2loopback..
 
 stop_event = threading.Event()
 bbox_queue = queue.Queue(maxsize=10)  # Limit queue size to avoid memory issues

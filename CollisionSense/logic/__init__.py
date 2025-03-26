@@ -1,0 +1,1 @@
+from .relative_location import get_relative_coordinates

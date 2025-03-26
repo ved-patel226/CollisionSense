@@ -3,6 +3,12 @@ import tkinter as tk
 from PIL import Image, ImageTk
 import queue
 import numpy as np
+from CollisionSense.logic import get_relative_coordinates
+import os
+
+
+def is_debug():
+    return os.environ["COLLISION_SENSE_DEBUG"] == "true"
 
 
 def normalize_with_range(max_possible, min_possible, target_min, target_max, num):
@@ -25,6 +31,8 @@ def show_frame(cap, lbl, bbox_queue, bbox_info_label):
             for obj in bbox_data:
                 x1, y1, x2, y2 = obj["bbox"]
                 conf = obj["confidence"]
+
+                img_height, img_width, _ = cv2image.shape
 
                 # Adjust beta based on confidence (lower confidence results in a lower beta)
                 beta = normalize_with_range(0.75, 1.0, 0.0, 75.0, conf)
@@ -54,10 +62,29 @@ def show_frame(cap, lbl, bbox_queue, bbox_info_label):
 
                 cv2image[y1:y2, x1:x2] = roi_out
 
+                if is_debug:
+                    # Put object ID on the frame
+                    text_position = (x1, y1 - 10 if y1 - 10 > 10 else y1 + 10)
+                    cv2.putText(
+                        cv2image,
+                        f"ID: {obj['id']} | POS: ",
+                        text_position,
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        1,
+                        (0, 255, 0),
+                        1,
+                        cv2.LINE_AA,
+                    )
+
             # Update info label with object count and details
             info_text = f"Objects detected: {len(bbox_data)}\n"
             for obj in bbox_data[:10]:  # Show details for first 3 objects
-                info_text += f'Object {obj["id"]}: {obj["distance"]:.2f}m ({obj["confidence"]:.2f})\n'
+
+                relative_coords = get_relative_coordinates(
+                    obj["bbox"], img_width, img_height, focal_length=1000
+                )
+
+                info_text += f'{obj["id"]}: {relative_coords[0]:2f}, {relative_coords[1]:2f}, {relative_coords[2]:2f}\n'
             if len(bbox_data) > 10:
                 info_text += f"...and {len(bbox_data)-3} more"
             bbox_info_label.config(text=info_text)
