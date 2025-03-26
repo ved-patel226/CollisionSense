@@ -41,6 +41,25 @@ def get_relative_coordinates(
     return (x, y, z)
 
 
+def get_velocity(initial_pos, new_pos, time_elapsed):
+    """
+    Calculate the velocity of an object.
+
+    Args:
+        initial_pos: Tuple (x, y, z) representing the initial position in meters
+        new_pos: Tuple (x, y, z) representing the new position in meters
+        time_elapsed: Time elapsed between the two positions in seconds
+
+    Returns:
+        velocity: Tuple (vx, vy, vz) representing the velocity in m/s
+    """
+    vx = (new_pos[0] - initial_pos[0]) / time_elapsed
+    vy = (new_pos[1] - initial_pos[1]) / time_elapsed
+    vz = (new_pos[2] - initial_pos[2]) / time_elapsed
+
+    return (vx, vy, vz)
+
+
 def calculate_angle_to_object(x, z):
     """
     Calculate the angle to the object from the camera's forward direction.

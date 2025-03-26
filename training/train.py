@@ -48,6 +48,6 @@ model = YOLO("yolo11n.pt")
 
 train_res = model.train(
     data=FORMATTED_PATH / "dataset.yaml",
-    epochs=100,
+    epochs=50,
 )
 model.save("car.pt")

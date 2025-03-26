@@ -3,7 +3,7 @@ import tkinter as tk
 from PIL import Image, ImageTk
 import queue
 import numpy as np
-from CollisionSense.logic import get_relative_coordinates
+from CollisionSense.logic import get_relative_coordinates, get_velocity
 import os
 
 
@@ -62,15 +62,50 @@ def show_frame(cap, lbl, bbox_queue, bbox_info_label):
 
                 cv2image[y1:y2, x1:x2] = roi_out
 
-                if is_debug:
+                if is_debug():
                     # Put object ID on the frame
                     text_position = (x1, y1 - 10 if y1 - 10 > 10 else y1 + 10)
+
+                    relative_coords = get_relative_coordinates(
+                        obj["bbox"], img_width, img_height, focal_length=1000
+                    )
+
+                    if obj["old_bbox"] and obj["prev_time"]:
+                        old_relative_coords = get_relative_coordinates(
+                            obj["old_bbox"], img_width, img_height, focal_length=1000
+                        )
+
+                        velocity = get_velocity(
+                            old_relative_coords,
+                            relative_coords,
+                            obj["prev_time"],
+                        )
+                        obj["prev_velocity"] = velocity
+
+                    elif "prev_velocity" in obj and obj["prev_velocity"]:
+                        velocity = obj["prev_velocity"]
+                    else:
+                        velocity = (0, 0, 0)
+
+                    # Add black background rectangle for better text visibility
+                    (text_width, text_height), baseline = cv2.getTextSize(
+                        f"ID: {obj['id']}| V: {velocity[0]:.2f}, {velocity[1]:.2f}, {velocity[2]:.2f}",
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        1,
+                    )
+                    top_left = (text_position[0], text_position[1] - text_height - 5)
+                    bottom_right = (
+                        text_position[0] + text_width,
+                        text_position[1] + baseline,
+                    )
+                    cv2.rectangle(cv2image, top_left, bottom_right, (0, 0, 0), -1)
                     cv2.putText(
                         cv2image,
-                        f"ID: {obj['id']} | POS: ",
+                        f"ID: {obj['id']}| V: {velocity[0]:.2f}, {velocity[1]:.2f}, {velocity[2]:.2f}",
                         text_position,
                         cv2.FONT_HERSHEY_SIMPLEX,
-                        1,
+                        0.5,
                         (0, 255, 0),
                         1,
                         cv2.LINE_AA,
@@ -80,11 +115,7 @@ def show_frame(cap, lbl, bbox_queue, bbox_info_label):
             info_text = f"Objects detected: {len(bbox_data)}\n"
             for obj in bbox_data[:10]:  # Show details for first 3 objects
 
-                relative_coords = get_relative_coordinates(
-                    obj["bbox"], img_width, img_height, focal_length=1000
-                )
-
-                info_text += f'{obj["id"]}: {relative_coords[0]:2f}, {relative_coords[1]:2f}, {relative_coords[2]:2f}\n'
+                info_text += f'{obj["id"]}\n'
             if len(bbox_data) > 10:
                 info_text += f"...and {len(bbox_data)-3} more"
             bbox_info_label.config(text=info_text)

@@ -1,1 +1,1 @@
-from .relative_location import get_relative_coordinates
+from .relative_location import get_relative_coordinates, get_velocity

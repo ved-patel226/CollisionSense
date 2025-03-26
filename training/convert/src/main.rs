@@ -106,10 +106,10 @@ fn process_dataset(
     let num_to_class = [
         ("car", 0),
         ("person", 1),
-        ("bus", 2),
-        ("truck", 3),
-        ("bike", 4),
-        ("train", 5),
+        ("rider", 2),
+        ("bus", 3),
+        ("truck", 4),
+        ("bike", 5),
     ]
         .iter()
         .cloned()

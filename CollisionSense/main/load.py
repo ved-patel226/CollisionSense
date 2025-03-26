@@ -2,14 +2,17 @@ import queue
 import cv2
 import pyvirtualcam
 from ultralytics import YOLO
+from time import time
 
 
 # NOTE -  Function MEANT to be threaded...
 def stream_to_virtual_cam(stop_event, bbox_queue):
-    while not stop_event.is_set():
+    # Track object history across frames
+    object_history = {}
 
+    while not stop_event.is_set():
         # Load the YOLO model
-        model = YOLO("training/runs/detect/train12/weights/best.pt")
+        model = YOLO("runs/detect/train/weights/best.pt")
 
         # Open the video file
         video_path = "training/test/sample5.mp4"
@@ -52,26 +55,55 @@ def stream_to_virtual_cam(stop_event, bbox_queue):
                 # Process detections and add distance annotations
                 boxes = results[0].boxes.xyxy.cpu().numpy()
                 confs = results[0].boxes.conf.cpu().numpy()
-                ids = results[0].boxes.id.int().cpu().tolist()
+                ids = (
+                    results[0].boxes.id.int().cpu().tolist()
+                    if results[0].boxes.id is not None
+                    else []
+                )
 
                 # Create a list to store bbox info
                 bbox_data = []
+                current_time = time()
 
                 for box, conf, id in zip(boxes, confs, ids):
                     x1, y1, x2, y2 = map(int, box)
                     distance = calculate_distance(x2 - x1)
 
-                    bbox_data.append(
-                        {
-                            "id": id,
-                            "bbox": (x1, y1, x2, y2),
-                            "distance": distance,
-                            "confidence": float(conf),
-                        }
-                    )
+                    # Initialize with no history
+                    bbox_info = {
+                        "id": id,
+                        "bbox": (x1, y1, x2, y2),
+                        "old_bbox": None,
+                        "distance": distance,
+                        "confidence": float(conf),
+                        "time": current_time,
+                        "prev_time": None,
+                    }
+
+                    # Check if we have history for this object
+                    if id in object_history:
+                        previous = object_history[id]
+                        bbox_info["old_bbox"] = previous["bbox"]
+                        bbox_info["prev_time"] = previous["time"]
+
+                    # Add to current frame's data
+                    bbox_data.append(bbox_info)
+
+                    # Update history for next frame
+                    object_history[id] = bbox_info
+
+                # Clean up history (remove objects not seen in this frame)
+                current_ids = set(ids)
+                object_history = {
+                    id: data for id, data in object_history.items() if id in current_ids
+                }
 
                 # Send bbox data to queue (non-blocking)
                 try:
+                    # Empty the queue first to avoid backlog
+                    while not bbox_queue.empty():
+                        bbox_queue.get_nowait()
+                    # Put the new data
                     bbox_queue.put(bbox_data, block=False)
                 except queue.Full:
                     # If queue is full, get rid of the oldest item
