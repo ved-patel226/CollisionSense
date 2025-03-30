@@ -1,0 +1,12 @@
+path: /mnt/Fedora2/code/Car/formatted_data
+
+train: train/images
+val: val/images
+
+names:
+  0: "car"
+  1: "person"
+  2: "bus"
+  3: "truck"
+  4: "bike"
+  5: "train"
