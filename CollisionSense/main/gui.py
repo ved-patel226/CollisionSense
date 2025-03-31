@@ -37,30 +37,29 @@ class CollisionSenseGUI:
         self.root = tk.Tk()
         self.root.title("CollisionSense")
 
-        # Create frame for video
-        video_frame = tk.Frame(self.root)
-        video_frame.pack(side=tk.LEFT, padx=10, pady=10)
+        # Make it fullscreen
+        self.root.attributes("-fullscreen", True)
+        # Set background color to black
+        self.root.configure(background="black")
 
-        # Create frame for bbox info
-        info_frame = tk.Frame(self.root)
-        info_frame.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.Y)
+        # Create frame for video without padding
+        video_frame = tk.Frame(self.root, bg="black")
+        video_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Create frame for bbox info without padding
+        info_frame = tk.Frame(self.root, bg="black")
+        info_frame.pack(side=tk.RIGHT, fill=tk.Y)
 
         # Label for video
-        self.lbl = tk.Label(video_frame)
-        self.lbl.pack()
+        self.lbl = tk.Label(video_frame, bg="black")
+        self.lbl.pack(fill=tk.BOTH, expand=True)
 
         # Label for bbox information
-        self.bbox_info_label = tk.Label(
-            info_frame,
-            text="Waiting for detections...",
-            justify=tk.LEFT,
-            font=("Arial", 12),
-            bg="#f0f0f0",
-            width=30,
-            height=10,
-            anchor="nw",
-        )
+        self.bbox_info_label = tk.Label(info_frame, bg="black", fg="white")
         self.bbox_info_label.pack(fill=tk.BOTH, expand=True)
+
+        # Add key binding to exit fullscreen with Escape key
+        self.root.bind("<Escape>", lambda e: self.on_closing())
 
         # Setup video capture
         self.cap = cv2.VideoCapture(0)
@@ -83,13 +82,24 @@ class CollisionSenseGUI:
                 bbox_data = self.bbox_queue.get_nowait()
                 # Draw bounding boxes on the frame
                 self.process_bounding_boxes(cv2image, bbox_data)
-
-                # Update info label with object count and details
-                self.update_info_label(bbox_data)
-
             except queue.Empty:
                 # No new bbox data available
                 pass
+
+            # Get current dimensions of the label
+            label_width = self.lbl.winfo_width()
+            label_height = self.lbl.winfo_height()
+
+            # Ensure we have valid dimensions (on first run they may be 1)
+            if label_width > 1 and label_height > 1:
+                # Resize frame to fit label while maintaining aspect ratio
+                img_height, img_width = cv2image.shape[:2]
+                ratio = min(label_width / img_width, label_height / img_height)
+                new_width = int(img_width * ratio)
+                new_height = int(img_height * ratio)
+                cv2image = cv2.resize(
+                    cv2image, (new_width, new_height), interpolation=cv2.INTER_AREA
+                )
 
             # Display the frame
             img = Image.fromarray(cv2image)
@@ -245,15 +255,6 @@ class CollisionSenseGUI:
             return obj["prev_velocity"]
         else:
             return (0, 0, 0)
-
-    def update_info_label(self, bbox_data):
-        """Update the info label with detection details"""
-        info_text = f"Objects detected: {len(bbox_data)}\n"
-        for obj in bbox_data[:10]:  # Show details for first 10 objects
-            info_text += f'{obj["id"]}\n'
-        if len(bbox_data) > 10:
-            info_text += f"...and {len(bbox_data)-10} more"
-        self.bbox_info_label.config(text=info_text)
 
     def on_closing(self):
         """Clean up resources and close the application"""
